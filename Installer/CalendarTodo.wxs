@@ -1,0 +1,34 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="日历与待办" Manufacturer="CalendarTodo"
+           Version="1.1.6" UpgradeCode="371E5428-AA45-44EF-BAA4-538FB844D908"
+           Scope="perUser" Language="2052" Codepage="936">
+    <MajorUpgrade DowngradeErrorMessage="已安装更新版本的日历与待办。" />
+    <Media Id="1" Cabinet="CalendarTodo-1.1.6.cab" EmbedCab="no" />
+    <Icon Id="CalendarTodoIcon" SourceFile="$(sys.SOURCEFILEDIR)..\App\Assets\CalendarTodo.ico" />
+    <Property Id="ARPPRODUCTICON" Value="CalendarTodoIcon" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="INSTALLFOLDER" Name="CalendarTodo">
+        <Directory Id="APPFOLDER" Name="Program" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenu" Guid="6399684E-6058-48AC-9CA6-87F5AC311A37">
+        <Shortcut Id="AppShortcut" Name="日历与待办" Target="[APPFOLDER]CalendarTodo.exe"
+                  WorkingDirectory="APPFOLDER" Icon="CalendarTodoIcon" />
+        <RegistryValue Root="HKCU" Key="Software\CalendarTodo" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveRegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="CalendarTodo" />
+      </Component>
+    </StandardDirectory>
+    <Feature Id="Widget" Title="日历与待办">
+      <ComponentRef Id="StartMenu" />
+      <ComponentGroupRef Id="ProgramFiles" />
+    </Feature>
+  </Package>
+  <Fragment>
+    <ComponentGroup Id="ProgramFiles" Directory="APPFOLDER">
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\**\*.pdb" />
+      </Files>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
