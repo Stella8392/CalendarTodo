@@ -31,6 +31,11 @@ public sealed partial class WidgetWindow
         var account = new TextBox { Header = "163 邮箱", PlaceholderText = "name@163.com", Text = previous ?? "", MaxLength = 128 };
         var password = new PasswordBox { Header = "客户端授权码", MaxLength = 128 };
         var startup = new CheckBox { Content = "登录 Windows 后启动", IsChecked = StartupEnabled() };
+        var syncTime = new TimePicker
+        {
+            Header = "每日同步时间（北京时间）", Language = "zh-CN",
+            ClockIdentifier = "24HourClock", MinuteIncrement = 1, SelectedTime = ScheduledSyncTime()
+        };
         var message = Label("在 163 网页版的设置中开启 IMAP，生成客户端授权码。", 12, Muted);
         message.TextWrapping = TextWrapping.Wrap;
         var status = Label("", 12, Accent);
@@ -39,10 +44,11 @@ public sealed partial class WidgetWindow
         panel.Children.Add(message);
         panel.Children.Add(account);
         panel.Children.Add(password);
+        panel.Children.Add(syncTime);
         panel.Children.Add(startup);
         panel.Children.Add(status);
-        var dialog = Dialog("设置", panel, "测试并绑定");
-        dialog.SecondaryButtonText = "保存启动设置";
+        var dialog = Dialog("设置", new ScrollViewer { Content = panel, MaxHeight = 270 }, "测试并绑定");
+        dialog.SecondaryButtonText = "保存设置";
         if (!string.IsNullOrEmpty(previous))
         {
             var disconnect = Button("解除邮箱绑定");
@@ -106,7 +112,7 @@ public sealed partial class WidgetWindow
                 if (!string.IsNullOrEmpty(previous) && previous != address)
                     Credentials.Delete(previous);
                 store.Set("account", address);
-                SetStartup(startup.IsChecked == true);
+                SavePreferences();
                 requiresAuth = false;
                 bound = true;
             }
@@ -123,7 +129,7 @@ public sealed partial class WidgetWindow
                 deferral.Complete();
             }
         };
-        dialog.SecondaryButtonClick += (_, _) => SetStartup(startup.IsChecked == true);
+        dialog.SecondaryButtonClick += (_, _) => SavePreferences();
         try
         {
             await dialog.ShowAsync();
@@ -137,6 +143,18 @@ public sealed partial class WidgetWindow
         {
             nextDailyAttempt = default;
             ShowIdleSyncStatus();
+        }
+
+        void SavePreferences()
+        {
+            SetStartup(startup.IsChecked == true);
+            if (syncTime.SelectedTime is { } time && time != ScheduledSyncTime())
+            {
+                store.Set("daily-sync-time", time.ToString(@"hh\:mm", CultureInfo.InvariantCulture));
+                nextDailyAttempt = default;
+                if (syncCancellation is null)
+                    ShowIdleSyncStatus();
+            }
         }
     }
 
@@ -199,11 +217,10 @@ public sealed partial class WidgetWindow
                     ClearDelivered(item.Id);
             requiresAuth = false;
             var finished = Beijing.Now;
-            if (finished.Hour >= 20)
+            if (DailyMailSync.IsDue(finished, null, ScheduledSyncTime()))
                 store.Set($"daily:{account}", Beijing.DayKey(finished));
             var result = checkedCount == 0 ? $"已同步 {finished:HH:mm} · 无新邮件" :
                 $"已同步 {finished:HH:mm} · 检查 {checkedCount} 封";
-            store.Set($"sync-status:{account}", result);
             SetSyncStatus(result);
         }
         catch (Exception error)
@@ -239,7 +256,7 @@ public sealed partial class WidgetWindow
         var now = Beijing.Now;
         var account = store.Get("account");
         if (string.IsNullOrEmpty(account) || now < nextDailyAttempt ||
-            !DailyMailSync.IsDue(now, store.Get($"daily:{account}")))
+            !DailyMailSync.IsDue(now, store.Get($"daily:{account}"), ScheduledSyncTime()))
             return Task.CompletedTask;
         nextDailyAttempt = now.AddMinutes(5);
         return Sync();
@@ -249,8 +266,11 @@ public sealed partial class WidgetWindow
     {
         var account = store.Get("account");
         SetSyncStatus(string.IsNullOrEmpty(account) ? "163 邮箱未绑定" :
-            store.Get($"sync-status:{account}") ?? "每日 20:00 自动同步");
+            $"每日 {ScheduledSyncTime():hh\\:mm} 自动同步");
     }
+
+    private TimeSpan ScheduledSyncTime() => TimeSpan.TryParseExact(store.Get("daily-sync-time"), @"hh\:mm",
+        CultureInfo.InvariantCulture, out var time) ? time : DailyMailSync.DefaultTime;
 
     private async Task StopSync()
     {

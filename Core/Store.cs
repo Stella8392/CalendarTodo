@@ -157,6 +157,24 @@ public sealed class Store
             ("$id", id), ("$done", done), ("$completed", done ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() : null));
     }
 
+    public void DeleteTodo(long id)
+    {
+        using var db = Open();
+        Execute(db, null, "DELETE FROM todo WHERE id=$id", ("$id", id));
+    }
+
+    public void DeleteSchedule(long id)
+    {
+        using var db = Open();
+        using var transaction = db.BeginTransaction();
+        Execute(db, transaction, """
+            DELETE FROM sent WHERE schedule_id=$id;
+            DELETE FROM todo WHERE schedule_id=$id;
+            DELETE FROM schedule WHERE id=$id;
+            """, ("$id", id));
+        transaction.Commit();
+    }
+
     public void SetPriority(long id, Priority priority)
     {
         using var db = Open();

@@ -21,6 +21,11 @@ Check(!DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(19).AddMinutes(59)), nul
 Check(DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(20)), null), "daily sync starts at 20:00 Beijing time");
 Check(!DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(22)), Beijing.DayKey(now)), "successful daily sync does not repeat");
 Check(DailyMailSync.IsDue(Beijing.At(now.Date.AddDays(1).AddHours(21)), Beijing.DayKey(now)), "next day's missed 20:00 sync can catch up");
+var customSyncTime = new TimeSpan(8, 35, 0);
+Check(!DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(8).AddMinutes(34)), null, customSyncTime) &&
+    DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(8).AddMinutes(35)), null, customSyncTime) &&
+    !DailyMailSync.IsDue(now, Beijing.DayKey(now), customSyncTime),
+    "custom sync time respects the selected minute and the daily completion marker");
 Check(MailboxHome.TryCreate("  示例邮箱  ", "https://mail.example.test/", out var mailbox) &&
     mailbox == new MailboxHome("示例邮箱", "https://mail.example.test/"), "mailbox home accepts and normalizes web links");
 Check(!MailboxHome.TryCreate("命令", "file:///C:/example", out _) &&
@@ -162,6 +167,14 @@ try
         store.Todos(interviewDay.AddTicks(-1)).All(task => !task.Title.StartsWith("18 日")) &&
         store.Todos(interviewDay.AddDays(1)).All(task => !task.Title.StartsWith("18 日")),
         "both imported interviews appear in today's todo only on their Beijing calendar date");
+    var deleteEvent = dayTodos[0].ScheduleId!.Value;
+    store.MarkSent(new Reminder(deleteEvent, dayTodos[0].Title, EventKind.Interview, dayTodos[0].When!.Value, 30));
+    store.DeleteSchedule(deleteEvent);
+    Check(!store.Schedules().Any(entry => entry.Id == deleteEvent) &&
+        !store.Todos().Any(entry => entry.ScheduleId == deleteEvent), "deleting a schedule removes its linked todo and permits prior reminders");
+    store.DeleteTodo(dayTodos[1].Id);
+    Check(store.Schedules().Any(entry => entry.Id == dayTodos[1].ScheduleId) &&
+        !store.Todos().Any(entry => entry.Id == dayTodos[1].Id), "deleting a linked todo preserves its schedule");
 }
 finally
 {

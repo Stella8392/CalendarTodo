@@ -1,12 +1,65 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
 
 namespace CalendarTodo;
 
 public sealed partial class WidgetWindow
 {
+    private MenuFlyout DeleteMenu(string kind, string title, Action delete)
+    {
+        var menu = new MenuFlyout();
+        var item = new MenuFlyoutItem { Text = $"删除{kind}" };
+        menu.Items.Add(item);
+        item.Click += async (_, _) =>
+        {
+            if (accountDialog) return;
+            accountDialog = true;
+            try
+            {
+                var message = Label($"删除「{title}」？", 13);
+                message.TextWrapping = TextWrapping.Wrap;
+                if (await Dialog($"删除{kind}", message, "删除").ShowAsync() != ContentDialogResult.Primary)
+                    return;
+                delete();
+                Refresh();
+            }
+            finally { accountDialog = false; }
+        };
+        return menu;
+    }
+
+    private Button FeedbackButton()
+    {
+        var button = Button("反馈", "提供产品反馈");
+        button.Click += async (_, _) =>
+        {
+            if (accountDialog) return;
+            accountDialog = true;
+            try
+            {
+                var message = Label("反馈会发布到公开的 GitHub Issues。请在浏览器内检查内容后提交，避免填写邮箱、授权码或私人日程。", 13);
+                message.TextWrapping = TextWrapping.Wrap;
+                if (await Dialog("产品反馈", message, "打开反馈页面").ShowAsync() != ContentDialogResult.Primary)
+                    return;
+                var version = typeof(WidgetWindow).Assembly.GetName().Version?.ToString(3);
+                var body = Uri.EscapeDataString($"应用版本：{version}\n\n反馈内容：\n\n复现步骤（如适用）：\n");
+                try
+                {
+                    if (await Launcher.LaunchUriAsync(new Uri($"https://github.com/Stella8392/CalendarTodo/issues/new?body={body}")))
+                        return;
+                }
+                catch (COMException) { }
+                await Dialog("产品反馈", Label("无法打开默认浏览器。", 13), "").ShowAsync();
+            }
+            finally { accountDialog = false; }
+        };
+        return button;
+    }
+
     private async Task AddSchedule()
     {
         if (accountDialog)

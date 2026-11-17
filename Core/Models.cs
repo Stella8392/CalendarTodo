@@ -27,6 +27,9 @@ public static class Beijing
 
 public static class DailyMailSync
 {
-    public static bool IsDue(DateTimeOffset time, string? lastSuccessfulDay) =>
-        time.ToOffset(Beijing.Offset).Hour >= 20 && lastSuccessfulDay != Beijing.DayKey(time);
+    public static readonly TimeSpan DefaultTime = TimeSpan.FromHours(20);
+
+    public static bool IsDue(DateTimeOffset time, string? lastSuccessfulDay, TimeSpan? scheduledTime = null) =>
+        time.ToOffset(Beijing.Offset).TimeOfDay >= (scheduledTime ?? DefaultTime) &&
+        lastSuccessfulDay != Beijing.DayKey(time);
 }

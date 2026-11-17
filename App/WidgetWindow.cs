@@ -268,7 +268,10 @@ public sealed partial class WidgetWindow : Window
         entry.Children.Add(add);
         footer.Children.Add(entry);
         syncButton.Click += async (_, _) => await Sync(manual: true);
-        var syncRow = Split(syncStatus, syncButton);
+        var footerActions = Row(4);
+        footerActions.Children.Add(syncButton);
+        footerActions.Children.Add(FeedbackButton());
+        var syncRow = Split(syncStatus, footerActions);
         syncStatus.TextTrimming = TextTrimming.CharacterEllipsis;
         footer.Children.Add(syncRow);
         Grid.SetRow(footer, 5);
@@ -385,6 +388,11 @@ public sealed partial class WidgetWindow : Window
             row.Padding = new Thickness(6, 2, 6, 2);
             row.Background = Tile;
             row.CornerRadius = new CornerRadius(6);
+            row.ContextFlyout = DeleteMenu("日程", item.Title, () =>
+            {
+                store.DeleteSchedule(item.Id);
+                ClearDelivered(item.Id);
+            });
             events.Children.Add(row);
         }
         if (events.Children.Count == 0)
@@ -454,6 +462,7 @@ public sealed partial class WidgetWindow : Window
             };
             Grid.SetColumn(priority, 3);
             grid.Children.Add(priority);
+            grid.ContextFlyout = DeleteMenu("待办", item.Title, () => store.DeleteTodo(item.Id));
             todos.Children.Add(grid);
         }
         if (items.Count == 0)

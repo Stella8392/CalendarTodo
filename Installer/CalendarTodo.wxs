@@ -1,9 +1,9 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="日历与待办" Manufacturer="CalendarTodo"
-           Version="1.1.6" UpgradeCode="371E5428-AA45-44EF-BAA4-538FB844D908"
+           Version="1.2.0" UpgradeCode="371E5428-AA45-44EF-BAA4-538FB844D908"
            Scope="perUser" Language="2052" Codepage="936">
     <MajorUpgrade DowngradeErrorMessage="已安装更新版本的日历与待办。" />
-    <Media Id="1" Cabinet="CalendarTodo-1.1.6.cab" EmbedCab="no" />
+    <Media Id="1" Cabinet="CalendarTodo-1.2.0.cab" EmbedCab="no" />
     <Icon Id="CalendarTodoIcon" SourceFile="$(sys.SOURCEFILEDIR)..\App\Assets\CalendarTodo.ico" />
     <Property Id="ARPPRODUCTICON" Value="CalendarTodoIcon" />
     <StandardDirectory Id="LocalAppDataFolder">
