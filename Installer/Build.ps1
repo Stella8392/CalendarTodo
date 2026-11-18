@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
 $publish = Join-Path $project 'App/obj/widget-publish'
 $output = if ($OutputDirectory) { $OutputDirectory } else { Join-Path $project 'dist' }
-$package = Join-Path $output 'CalendarTodo-Setup-1.2.0-x64.msi'
+$package = Join-Path $output 'CalendarTodo-Setup-1.3.0-x64.msi'
 $intermediate = Join-Path $project 'App/obj/wix-intermediate'
 
 & $Dotnet publish (Join-Path $project 'App/CalendarTodo.csproj') -c Release -o $publish -p:DebugType=None -p:DebugSymbols=false -p:UseSharedCompilation=false
@@ -21,4 +21,4 @@ $definition = Join-Path $PSScriptRoot 'CalendarTodo.wxs'
 & $Wix build $definition -arch x64 -d "PublishDir=$publish" -intermediatefolder $intermediate -pdbtype none -out $package
 if ($LASTEXITCODE -ne 0) { throw "wix build failed ($LASTEXITCODE)" }
 
-Get-Item -LiteralPath $package,(Join-Path $output 'CalendarTodo-1.2.0.cab')
+Get-Item -LiteralPath $package,(Join-Path $output 'CalendarTodo-1.3.0.cab')

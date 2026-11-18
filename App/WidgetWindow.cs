@@ -64,7 +64,7 @@ public sealed partial class WidgetWindow : Window
     private DateTime? displayedAgendaDay;
     private static readonly SolidColorBrush CountRed = Color(0xFF, 0xB4, 0x1F, 0x32);
     private static readonly SolidColorBrush CountBackground = new(Colors.White);
-    private bool exiting, accountDialog, requiresAuth;
+    private bool exiting, accountDialog;
 
     public WidgetWindow(Store store)
     {
@@ -383,7 +383,7 @@ public sealed partial class WidgetWindow : Window
             var type = item.Kind == EventKind.Deadline ? "截止" : "开始";
             var title = Label(item.Title, 12, strong: true);
             title.TextTrimming = TextTrimming.CharacterEllipsis;
-            ToolTipService.SetToolTip(title, item.Title);
+            ToolTipService.SetToolTip(title, string.IsNullOrEmpty(item.Account) ? item.Title : $"{item.Title}\n来源邮箱 · {item.Account}");
             var row = Split(title, Label($"{item.When.ToString("M/d HH:mm", Chinese)} {type}", 10, Accent));
             row.Padding = new Thickness(6, 2, 6, 2);
             row.Background = Tile;
@@ -444,7 +444,7 @@ public sealed partial class WidgetWindow : Window
             ToolTipService.SetToolTip(label, item.Title);
             label.VerticalAlignment = VerticalAlignment.Center;
             var description = item.Cancelled ? "已取消" : item.When is { } when
-                ? $"{(item.FromMail ? "163 邮件" : "日程")} · {when:HH:mm}" : "";
+                ? $"{(item.FromMail ? "邮件导入" : "日程")} · {when:HH:mm}" : "";
             var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             labels.Children.Add(label);
             if (description.Length > 0)

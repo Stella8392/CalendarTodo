@@ -20,7 +20,7 @@ public sealed class Inbox(Store store)
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         token = deadline.Token;
-        progress?.Invoke("正在连接 163 邮箱…");
+        progress?.Invoke($"正在连接 {MailProvider.ForAddress(account)?.Name}…");
         using var client = await Connect(account, password, token);
         var folder = client.Inbox;
         var now = Beijing.Now;
@@ -155,10 +155,11 @@ public sealed class Inbox(Store store)
         var client = new ImapClient { Timeout = 25_000 };
         try
         {
-            await client.ConnectAsync("imap.163.com", 993, SecureSocketOptions.SslOnConnect, token);
+            var provider = MailProvider.ForAddress(account) ?? throw new ArgumentException("不支持的邮箱地址", nameof(account));
+            await client.ConnectAsync(provider.Host, 993, SecureSocketOptions.SslOnConnect, token);
             if (client.Capabilities.HasFlag(ImapCapabilities.Id))
                 await client.IdentifyAsync(new ImapImplementation { Name = "CalendarTodo", Version = "1.0" }, token);
-            await client.AuthenticateAsync(account, password, token);
+            await client.AuthenticateAsync(account, provider.NormalizeSecret(password), token);
             await client.Inbox.OpenAsync(FolderAccess.ReadOnly, token);
             return client;
         }

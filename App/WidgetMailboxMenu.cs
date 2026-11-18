@@ -50,7 +50,7 @@ public sealed partial class WidgetWindow
             try { return JsonSerializer.Deserialize<List<MailboxHome>>(saved) ?? []; }
             catch (JsonException) { }
         }
-        return [new MailboxHome("163 邮箱", "https://mail.163.com/")];
+        return MailProvider.All.Select(provider => new MailboxHome(provider.Name, provider.Homepage)).ToList();
     }
 
     private async Task OpenMailbox(MailboxHome mailbox)

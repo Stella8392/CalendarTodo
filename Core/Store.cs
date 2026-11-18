@@ -14,6 +14,7 @@ public sealed class Store
         using var command = Command(db, null, """
             PRAGMA journal_mode = WAL;
             CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS bound_account (address TEXT PRIMARY KEY COLLATE NOCASE);
             CREATE TABLE IF NOT EXISTS cursor (account TEXT PRIMARY KEY, validity INTEGER NOT NULL,
               uid INTEGER NOT NULL, scan_start INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY, account TEXT NOT NULL,
@@ -42,6 +43,10 @@ public sealed class Store
                 PRAGMA user_version=1;
                 """, ("$today", Beijing.DayKey(Beijing.Now)));
         }
+        Execute(db, migration, """
+            INSERT OR IGNORE INTO bound_account(address) SELECT value FROM setting WHERE key='account' AND value<>'';
+            DELETE FROM setting WHERE key='account';
+            """);
         migration.Commit();
     }
 
@@ -68,6 +73,30 @@ public sealed class Store
     {
         using var command = Command(db, transaction, sql, parameters);
         return command.ExecuteNonQuery();
+    }
+
+    public List<string> Accounts()
+    {
+        using var db = Open();
+        using var command = Command(db, null, "SELECT address FROM bound_account ORDER BY address");
+        using var rows = command.ExecuteReader();
+        var result = new List<string>();
+        while (rows.Read()) result.Add(rows.GetString(0));
+        return result;
+    }
+
+    public void BindAccount(string address)
+    {
+        address = address.Trim().ToLowerInvariant();
+        if (MailProvider.ForAddress(address) is null) throw new ArgumentException("不支持的邮箱地址", nameof(address));
+        using var db = Open();
+        Execute(db, null, "INSERT OR IGNORE INTO bound_account(address) VALUES($address)", ("$address", address));
+    }
+
+    public void UnbindAccount(string address)
+    {
+        using var db = Open();
+        Execute(db, null, "DELETE FROM bound_account WHERE address=$address", ("$address", address));
     }
 
     public string? Get(string key)
@@ -302,11 +331,11 @@ public sealed class Store
     public List<Pending> PendingItems()
     {
         using var db = Open();
-        using var command = Command(db, null, "SELECT id,suggestion FROM pending ORDER BY id");
+        using var command = Command(db, null, "SELECT id,suggestion,account FROM pending ORDER BY id");
         using var rows = command.ExecuteReader();
         var result = new List<Pending>();
         while (rows.Read())
-            result.Add(new Pending(rows.GetInt64(0), JsonSerializer.Deserialize<Suggestion>(rows.GetString(1))!));
+            result.Add(new Pending(rows.GetInt64(0), JsonSerializer.Deserialize<Suggestion>(rows.GetString(1))!, rows.GetString(2)));
         return result;
     }
 

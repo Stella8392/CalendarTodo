@@ -7,7 +7,8 @@ namespace CalendarTodo;
 
 internal static class Credentials
 {
-    private static string Target(string account) => $"CalendarTodo/163/{account}";
+    private static string Target(string account) =>
+        $"CalendarTodo/{MailProvider.ForAddress(account)?.Id ?? throw new ArgumentException("不支持的邮箱地址")}/{account}";
 
     public static string? Read(string account)
     {

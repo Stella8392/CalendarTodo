@@ -18,6 +18,16 @@ void Check(bool condition, string name)
 }
 
 Check(!DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(19).AddMinutes(59)), null), "daily sync does not start before 20:00");
+Check(MailProvider.ForAddress("name@163.com")?.Host == "imap.163.com" &&
+    MailProvider.ForAddress("name@qq.com")?.Host == "imap.qq.com" &&
+    MailProvider.ForAddress("name@foxmail.com")?.Id == "qq" &&
+    MailProvider.ForAddress(" NAME@GMAIL.COM ")?.Host == "imap.gmail.com" &&
+    MailProvider.ForAddress("name@googlemail.com")?.Id == "gmail", "provider routes each supported email domain");
+Check(MailProvider.ForAddress("name@gmail.com.evil.test") is null &&
+    MailProvider.ForAddress("Someone <name@qq.com>") is null && MailProvider.ForAddress("bad@@qq.com") is null,
+    "provider rejects unsupported domains and ambiguous addresses");
+Check(MailProvider.ForAddress("name@gmail.com")!.NormalizeSecret("abcd efgh ijkl mnop") == "abcdefghijklmnop",
+    "Gmail accepts grouped application passwords");
 Check(DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(20)), null), "daily sync starts at 20:00 Beijing time");
 Check(!DailyMailSync.IsDue(Beijing.At(now.Date.AddHours(22)), Beijing.DayKey(now)), "successful daily sync does not repeat");
 Check(DailyMailSync.IsDue(Beijing.At(now.Date.AddDays(1).AddHours(21)), Beijing.DayKey(now)), "next day's missed 20:00 sync can catch up");
@@ -78,6 +88,37 @@ var folder = Path.Combine(Path.GetTempPath(), "CalendarTodoVerify", Guid.NewGuid
 Directory.CreateDirectory(folder);
 try
 {
+    var multiPath = Path.Combine(folder, "multi.db");
+    var legacy = new Store(multiPath);
+    legacy.Set("account", "legacy@163.com");
+    legacy.AddTodo("升级前的任务", Priority.Medium, now);
+    var multi = new Store(multiPath);
+    Check(multi.Accounts().SequenceEqual(new[] { "legacy@163.com" }) && multi.Get("account") is null &&
+        multi.Todos(now).Single().Title == "升级前的任务", "legacy binding migrates without losing local records");
+    multi.BindAccount("other@qq.com");
+    multi.BindAccount("THIRD@GMAIL.COM");
+    multi.BindAccount(" other@qq.com ");
+    Check(new Store(multiPath).Accounts().Count == 3, "multiple bindings persist and addresses deduplicate");
+    foreach (var address in multi.Accounts())
+    {
+        var position = multi.GetOrResetCursor(address, 42, now);
+        multi.Import(address, position with { Uid = 10 }, "shared-message", [interview], now);
+    }
+    Check(multi.Schedules().Count == 3 && multi.Schedules().Select(item => item.Account).Distinct().Count() == 3,
+        "same mail identity in different accounts preserves separate provenance");
+    var qqCursor = multi.GetOrResetCursor("other@qq.com", 42, now);
+    multi.AdvanceCursor("other@qq.com", qqCursor with { Uid = 50 });
+    Check(multi.GetOrResetCursor("third@gmail.com", 42, now).Uid == 10 &&
+        multi.GetOrResetCursor("legacy@163.com", 42, now).Uid == 10, "account cursors advance independently");
+    multi.Set("daily:other@qq.com", Beijing.DayKey(now));
+    Check(!DailyMailSync.IsDue(now.AddHours(10), multi.Get("daily:other@qq.com")) &&
+        DailyMailSync.IsDue(now.AddHours(10), multi.Get("daily:third@gmail.com")), "daily completion is tracked per account");
+    multi.UnbindAccount("legacy@163.com");
+    Check(new Store(multiPath).Accounts().Count == 2 && multi.Schedules().Count == 3,
+        "unbinding preserves imported events and does not reintroduce the migrated binding");
+    multi.UnbindAccount("other@qq.com");
+    multi.BindAccount("other@qq.com");
+    Check(multi.GetOrResetCursor("other@qq.com", 42, now).Uid == 50, "rebind resumes the account's existing cursor");
     const string account = "test@163.com";
     var path = Path.Combine(folder, "test.db");
     var store = new Store(path);

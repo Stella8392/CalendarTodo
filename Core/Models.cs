@@ -12,7 +12,7 @@ public sealed record Suggestion(string Title, string Sender, EventKind Kind, Mai
     DateTimeOffset? When, string? CalendarUid, int? Sequence, string Snippet, string Reason, MailSource? Source = null);
 public sealed record MailSource(uint Validity, uint Uid, string? MessageId, string Subject);
 public sealed record OriginalMail(MailSource Source, string Sender, DateTimeOffset Date, string Body);
-public sealed record Pending(long Id, Suggestion Suggestion);
+public sealed record Pending(long Id, Suggestion Suggestion, string Account = "");
 public sealed record Reminder(long EventId, string Title, EventKind Kind, DateTimeOffset When, int Lead);
 public sealed record Cursor(uint Validity, uint Uid, DateTimeOffset ScanStart);
 
