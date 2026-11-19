@@ -71,7 +71,9 @@ public sealed partial class WidgetWindow
             var time = new TimePicker { SelectedTime = SyncTime(), ClockIdentifier = "24HourClock" };
             var startup = new CheckBox { Content = "登录 Mac 后启动", IsChecked = MacSystem.StartupEnabled };
             var panel = Column(Label("已绑定邮箱"), accounts, Label("添加或更新邮箱"), channel, instruction,
-                ActionButton("查看官方授权说明", () => MacSystem.Open(MailProvider.All[channel.SelectedIndex].HelpUrl)),
+                ActionButton("查看官方授权说明", () => MacSystem.Open(channel.SelectedIndex == 1
+                    ? "https://wx.mail.qq.com/list/readtemplate?name=app_intro.html#/agreement/authorizationCode"
+                    : MailProvider.All[channel.SelectedIndex].HelpUrl)),
                 Label("邮箱地址填写完整邮箱账号"), address, secret, Label("每日同步时间（北京时间）"), time, startup, status);
             var window = Dialog("邮箱与设置", panel);
             var busy = false;

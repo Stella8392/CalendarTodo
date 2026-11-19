@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [macos-preview]
-    paths: ['MacApp/**', 'Core/**', 'Verification/**', '.github/workflows/macos.yml']
+    paths: ['MacApp/**', 'Core/**', 'Verification/**', 'ThirdParty/**', 'THIRD-PARTY-NOTICES.md', '.github/workflows/macos.yml']
 permissions:
   contents: read
 jobs:
