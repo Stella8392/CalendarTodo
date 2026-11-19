@@ -6,6 +6,9 @@ on:
     paths: ['MacApp/**', 'Core/**', 'Verification/**', 'ThirdParty/**', 'THIRD-PARTY-NOTICES.md', '.github/workflows/macos.yml']
 permissions:
   contents: read
+concurrency:
+  group: macos-preview-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     strategy:

@@ -13,6 +13,11 @@ public sealed partial class WidgetWindow
         {
             await Task.Delay(600);
             if (!IsVisible || calendar.Children.Count != 49) throw new Exception("Calendar window did not render");
+            Height = MinHeight;
+            await Task.Delay(250);
+            var footer = syncButton.TranslatePoint(new Avalonia.Point(0, syncButton.Bounds.Height), this);
+            if (footer is null || footer.Value.Y > ClientSize.Height + 1) throw new Exception("Small window clips the sync controls");
+            Height = 700;
             store.AddSchedule("本机验证会议", Beijing.Now.AddHours(1));
             store.AddTodo("本机验证待办", Priority.High);
             Refresh();

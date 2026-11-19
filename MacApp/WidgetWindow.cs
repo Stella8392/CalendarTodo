@@ -67,8 +67,8 @@ public sealed partial class WidgetWindow : Window
 
     private Control Build()
     {
-        layout = new Grid { Margin = new Thickness(12), RowDefinitions = new RowDefinitions("Auto,Auto,180,6,*,Auto,Auto") };
-        layout.RowDefinitions[2].Height = new GridLength(Number("mac-agenda-height", 180));
+        layout = new Grid { Margin = new Thickness(12), RowDefinitions = new RowDefinitions("Auto,Auto,*,6,1.2*,Auto,Auto") };
+        layout.RowDefinitions[2].Height = new GridLength(Number("mac-agenda-weight", 1), GridUnitType.Star);
         var title = Label("日历与待办", 18);
         title.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
         var pin = ActionButton("置顶", () => { Topmost = !Topmost; store.Set("mac-topmost", Topmost ? "1" : "0"); });
@@ -201,7 +201,7 @@ public sealed partial class WidgetWindow : Window
         store.Set("mac-height", Height.ToString(CultureInfo.InvariantCulture));
         store.Set("mac-x", Position.X.ToString(CultureInfo.InvariantCulture));
         store.Set("mac-y", Position.Y.ToString(CultureInfo.InvariantCulture));
-        store.Set("mac-agenda-height", layout.RowDefinitions[2].ActualHeight.ToString(CultureInfo.InvariantCulture));
+        store.Set("mac-agenda-weight", layout.RowDefinitions[2].Height.Value.ToString(CultureInfo.InvariantCulture));
     }
     private void RestorePosition()
     {
