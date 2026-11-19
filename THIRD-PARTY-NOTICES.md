@@ -2,6 +2,8 @@
 
 Windows 安装包包含下列第三方运行组件。安装或使用时，请阅读并遵守随附的许可和通知。各组件按其上游许可分发。完整文件位于 ThirdParty 目录，也会随安装程序及发布 ZIP 提供。
 
+Mac 预览版还使用 Avalonia、SkiaSharp 和 HarfBuzzSharp（MIT），以及 Skia、HarfBuzz 的原生组件及其上游通知。Mac 包的第三方许可随应用放在 Contents/Resources 中。Windows 专用运行组件由 Windows 包使用。 [Avalonia](https://github.com/AvaloniaUI/Avalonia/blob/master/licence.md) · [SkiaSharp](https://github.com/mono/SkiaSharp/blob/main/LICENSE.md) · [HarfBuzz](https://github.com/harfbuzz/harfbuzz/blob/main/COPYING)
+
 | 组件 | 许可及来源 |
 | --- | --- |
 | .NET、Windows Desktop Runtime、ASP.NET Core Runtime，以及随包的 Microsoft .NET 库 | MIT 及随附的第三方通知。[.NET 许可证](https://github.com/dotnet/runtime/blob/main/LICENSE.TXT) |
