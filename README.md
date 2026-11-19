@@ -2,7 +2,7 @@
 
 用于 Windows 桌面的浮动日历与待办清单。可以手动添加日程，也可以同时连接多个 163、QQ 或 Gmail 邮箱，统一识别面试、笔试和测评截止时间。绑定邮箱是可选的。
 
-## 下载和安装
+## Windows 下载和安装
 
 适用 Windows 10 22H2 x64 和 Windows 11 x64。本版本在 Windows 10 22H2 x64 验证。安装包随附 .NET 和 Windows App SDK 运行组件，无需另外安装开发工具或运行时。
 
@@ -11,6 +11,19 @@
 3. 从开始菜单打开「日历与待办」。升级前，从小组件右上角点「×」退出正在运行的版本。
 
 安装包采用自包含部署，当前发布未做 Authenticode 签名。可将下载文件的 SHA-256 与同一 Release 中的校验文件对照。 [Windows App SDK 自包含部署](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained-deploy/deploy-self-contained-apps)
+
+## Mac 预览版
+
+Mac 预览版 v1.4.0-preview.1 分别提供 Apple 芯片（osx-arm64）和 Intel（osx-x64）的自包含 .app，目标 macOS 14 或更新版本。两种架构已在 macOS 15 通过核心回归、打包后启动、最小窗口尺寸、日历与待办显示、本地持久化和钥匙串读写验证。 [下载 Mac 预览版](https://github.com/Stella8392/CalendarTodo/releases/tag/v1.4.0-preview.1) · [验证记录](https://github.com/Stella8392/CalendarTodo/actions/runs/44528590126)
+
+1. 在 Mac 的「关于本机」中确认芯片类型，下载对应的 osx-arm64 或 osx-x64 ZIP。
+2. 解压 CalendarTodo.app，拖入「应用程序」后打开。应用自带 .NET 运行时。
+3. 预览包使用 ad-hoc 签名，尚未进行 Apple Developer ID 正式签名和公证。首次打开可能需要按 macOS「隐私与安全性」中的提示允许应用。
+4. 在设置中使用自己的完整邮箱账号和授权码，按下方各邮箱教程绑定。Mac 版使用 macOS 钥匙串保存凭据。
+
+Mac 版包括日历角标、按日期查看日程、今日待办、右键删除、多邮箱同步、可调每日同步时间、菜单栏隐藏与唤回及反馈入口。窗口使用 Mac 原生标题栏并支持边缘缩放，日程与待办之间的分隔条可调节高度。真实邮箱登录、日常窗口交互和通知显示仍待人工验收。提醒通过 AppleScript 请求系统通知，实际显示受系统权限影响。 [Mac 完整使用与构建说明](https://github.com/Stella8392/CalendarTodo/blob/v1.4.0-preview.1/MacApp/README.md)
+
+Mac 与 Windows 各自保存本地数据，当前没有跨设备云同步。Mac 预览版的数据默认在 ~/Library/Application Support/CalendarTodo，Windows 稳定版仍可从上方入口下载。
 
 ## 桌面操作
 
