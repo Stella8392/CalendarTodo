@@ -90,8 +90,13 @@ public sealed partial class WidgetWindow
             contents.Margin = new Thickness(0);
             var capacity = items.Length <= monthCapacity.Regular ? monthCapacity.Regular : monthCapacity.Overflow;
             foreach (var item in items.Take(capacity)) contents.Children.Add(MonthCard(item, Refresh));
-            if (items.Length > monthCapacity)
-                contents.Children.Add(ActionButton($"＋{items.Length - monthCapacity}", () => ShowMonthDay(day)));
+            if (items.Length > capacity)
+            {
+                var more = ActionButton($"＋{items.Length - capacity}", () => ShowMonthDay(day));
+                more.Height = more.MinHeight = 18;
+                more.Padding = new Thickness(3, 0);
+                contents.Children.Add(more);
+            }
             var cell = new Border
             {
                 Child = contents, Padding = new Thickness(4), Background = Brush.Parse("#CFFFFFFF"),
