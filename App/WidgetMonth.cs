@@ -21,7 +21,7 @@ public sealed partial class WidgetWindow
     private (int Regular, int Overflow) MonthCapacities()
     {
         var height = Math.Max(0, (monthCells.ActualHeight - 20) / 6);
-        return (Math.Clamp((int)((height - 28) / 26), 0, 4), Math.Clamp((int)((height - 49) / 26), 0, 4));
+        return (Math.Clamp((int)((height - 29) / 26), 0, 4), Math.Clamp((int)((height - 50) / 26), 0, 4));
     }
     private void BuildMonthOverview()
     {
