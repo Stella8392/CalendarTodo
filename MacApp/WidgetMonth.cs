@@ -81,6 +81,7 @@ public sealed partial class WidgetWindow
             var date = ActionButton(day.Day.ToString(), async () => { selectedDay = day; await ShowMonthDay(day); });
             date.Padding = new Thickness(3, 0);
             date.MinHeight = date.Height = 20;
+            date.FontSize = 12;
             date.Background = day == Beijing.Now.Date ? Brush.Parse("#C4D7F7") : Brushes.Transparent;
             var count = items.Count(item => item.Schedule is not null);
             var countLabel = Label(count > 0 ? count.ToString() : "", 10);
@@ -94,6 +95,7 @@ public sealed partial class WidgetWindow
             {
                 var more = ActionButton($"＋{items.Length - capacity}", () => ShowMonthDay(day));
                 more.Height = more.MinHeight = 18;
+                more.FontSize = 11;
                 more.Padding = new Thickness(3, 0);
                 contents.Children.Add(more);
             }
