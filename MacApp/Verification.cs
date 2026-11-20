@@ -36,22 +36,22 @@ public sealed partial class WidgetWindow
             var schedule = store.Schedules().Single();
             var operation = EditEntry(schedule, null);
             await Task.Delay(350);
-            var editor = desktop.Windows.Single(window => window != this);
+            var editor = desktop.Windows.Single(window => window != this && window.IsVisible && window.Title == "编辑事项");
             var panel = (StackPanel)((ScrollViewer)editor.Content!).Content!;
             panel.Children.OfType<TextBox>().Single().Text = "改期会议";
             panel.Children.OfType<DatePicker>().Single().SelectedDate = new DateTimeOffset(Beijing.Now.Date.AddDays(1).AddHours(12));
             panel.Children.OfType<TimePicker>().Single().SelectedTime = new TimeSpan(10, 5, 0);
-            panel.Children.OfType<Button>().Single().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            panel.Children.OfType<Button>().Single(button => Equals(button.Content, "保存")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await operation.WaitAsync(TimeSpan.FromSeconds(5));
             schedule = store.Schedules().Single();
             if (schedule.When.Date != Beijing.Now.Date.AddDays(1) || schedule.When.Hour != 10 || schedule.When.Minute != 5)
                 throw new Exception("Date/time editor did not update schedule");
             operation = SetRepeat(schedule, null);
             await Task.Delay(350);
-            editor = desktop.Windows.Single(window => window != this);
+            editor = desktop.Windows.Single(window => window != this && window.IsVisible && window.Title == "设置重复");
             panel = (StackPanel)((ScrollViewer)editor.Content!).Content!;
             panel.Children.OfType<ComboBox>().Single().SelectedIndex = 1;
-            panel.Children.OfType<Button>().Single().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            panel.Children.OfType<Button>().Single(button => Equals(button.Content, "保存")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await operation.WaitAsync(TimeSpan.FromSeconds(5));
             if (store.RuleFor(schedule.Id, true)?.Frequency != RepeatFrequency.Daily) throw new Exception("Native repeat settings did not save");
             ToggleMonth();
