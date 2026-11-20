@@ -1,0 +1,74 @@
+name: macOS preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [macos-preview, feature/monthly-recurrence, main]
+    paths: ['MacApp/**', 'Core/**', 'Verification/**', 'ThirdParty/**', 'THIRD-PARTY-NOTICES.md', '.github/workflows/macos.yml']
+permissions:
+  contents: read
+concurrency:
+  group: macos-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            rid: osx-arm64
+          - runner: macos-15-intel
+            rid: osx-x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Core regression checks
+        run: dotnet run --project Verification/CalendarTodo.Verification.csproj -c Release
+      - name: Package app bundle
+        run: bash MacApp/Build.sh '${{ matrix.rid }}'
+      - name: Launch packaged app and test Keychain
+        env:
+          CALENDARTODO_DATA_DIR: ${{ runner.temp }}/CalendarTodoVerification
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          subprocess.run(['dist/mac/${{ matrix.rid }}/CalendarTodo.app/Contents/MacOS/CalendarTodo.Mac', '--smoke-test'], check=True, timeout=60)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CalendarTodo-${{ matrix.rid }}-preview
+          path: |
+            dist/mac/${{ matrix.rid }}/*.zip
+            dist/mac/${{ matrix.rid }}/SHA256SUMS.txt
+            dist/mac/${{ matrix.rid }}/README-macOS.md
+          if-no-files-found: error
+  release-draft:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Verify and upload preview packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for folder in artifacts/*; do
+            (cd "$folder" && sha256sum -c SHA256SUMS.txt)
+          done
+          if [ "$(gh release view v1.5.0-preview.1 --json isDraft --jq .isDraft)" != "true" ]; then
+            echo "Preview already published; keeping this run as build artifacts."
+            exit 0
+          fi
+          cat artifacts/*/SHA256SUMS.txt > SHA256SUMS.txt
+          sha256sum artifacts/*/*.zip
+          gh release edit v1.5.0-preview.1 --target "$GITHUB_SHA"
+          gh release upload v1.5.0-preview.1 artifacts/*/*.zip SHA256SUMS.txt --clobber

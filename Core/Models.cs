@@ -3,11 +3,15 @@ namespace CalendarTodo;
 public enum Priority { Low, Medium, High }
 public enum EventKind { Interview, Exam, Deadline, Appointment }
 public enum MailAction { Add, Reschedule, Cancel }
+public enum RepeatFrequency { None, Daily, Weekly }
+public enum EditScope { ThisOccurrence, ThisAndFollowing }
 
 public sealed record Schedule(long Id, string Title, string Sender, EventKind Kind,
-    DateTimeOffset When, bool Cancelled, string Account = "", MailSource? Source = null);
+    DateTimeOffset When, bool Cancelled, string Account = "", MailSource? Source = null,
+    long? SeriesId = null, string? OriginalDay = null);
 public sealed record Todo(long Id, string Title, Priority Priority, bool Done, long? ScheduleId,
-    DateTimeOffset? When, bool Cancelled, bool FromMail = false);
+    DateTimeOffset? When, bool Cancelled, bool FromMail = false, DateTimeOffset? Day = null,
+    long? SeriesId = null, string? OriginalDay = null, string? MovedTo = null);
 public sealed record Suggestion(string Title, string Sender, EventKind Kind, MailAction Action,
     DateTimeOffset? When, string? CalendarUid, int? Sequence, string Snippet, string Reason, MailSource? Source = null);
 public sealed record MailSource(uint Validity, uint Uid, string? MessageId, string Subject);

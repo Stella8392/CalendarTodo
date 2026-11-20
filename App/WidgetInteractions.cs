@@ -9,29 +9,6 @@ namespace CalendarTodo;
 
 public sealed partial class WidgetWindow
 {
-    private MenuFlyout DeleteMenu(string kind, string title, Action delete)
-    {
-        var menu = new MenuFlyout();
-        var item = new MenuFlyoutItem { Text = $"删除{kind}" };
-        menu.Items.Add(item);
-        item.Click += async (_, _) =>
-        {
-            if (accountDialog) return;
-            accountDialog = true;
-            try
-            {
-                var message = Label($"删除「{title}」？", 13);
-                message.TextWrapping = TextWrapping.Wrap;
-                if (await Dialog($"删除{kind}", message, "删除").ShowAsync() != ContentDialogResult.Primary)
-                    return;
-                delete();
-                Refresh();
-            }
-            finally { accountDialog = false; }
-        };
-        return menu;
-    }
-
     private Button FeedbackButton()
     {
         var button = Button("反馈", "提供产品反馈");
@@ -60,7 +37,7 @@ public sealed partial class WidgetWindow
         return button;
     }
 
-    private async Task AddSchedule()
+    private async Task AddSchedule(DateTime? initialDay = null)
     {
         if (accountDialog)
             return;
@@ -73,7 +50,7 @@ public sealed partial class WidgetWindow
             {
                 Header = "日期（北京时间）", Language = "zh-CN", HorizontalAlignment = HorizontalAlignment.Stretch,
                 CalendarIdentifier = Windows.Globalization.CalendarIdentifiers.Gregorian,
-                SelectedDate = new DateTimeOffset(now.Date.AddHours(12))
+                SelectedDate = new DateTimeOffset((initialDay ?? selected ?? now.Date).AddHours(12))
             };
             var time = new TimePicker
             {
