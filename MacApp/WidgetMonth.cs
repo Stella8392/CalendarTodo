@@ -12,8 +12,13 @@ public sealed partial class WidgetWindow
     private readonly Grid monthOverview = new() { IsVisible = false, RowDefinitions = new RowDefinitions("Auto,*") };
     private readonly Grid monthCells = new() { ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*,*,*") };
     private readonly TextBlock overviewHeading = Label("", 18);
-    private int monthCapacity;
+    private (int Regular, int Overflow) monthCapacity;
 
+    private (int Regular, int Overflow) MonthCapacities()
+    {
+        var height = Math.Max(0, (monthCells.Bounds.Height - 20) / 6);
+        return (Math.Clamp((int)((height - 28) / 26), 0, 4), Math.Clamp((int)((height - 49) / 26), 0, 4));
+    }
     private void BuildMonthOverview()
     {
         monthToggle.Click += (_, _) => ToggleMonth();
@@ -26,7 +31,7 @@ public sealed partial class WidgetWindow
         Add(layout, monthOverview, 1);
         monthCells.SizeChanged += (_, _) =>
         {
-            var count = Math.Clamp((int)((monthCells.Bounds.Height / 6 - 45) / 27), 0, 4);
+            var count = MonthCapacities();
             if (monthExpanded && count != monthCapacity) RefreshMonthOverview();
         };
     }
@@ -68,20 +73,23 @@ public sealed partial class WidgetWindow
             var title = Label("星期" + "一二三四五六日"[col], 12);
             Grid.SetColumn(title, col); monthCells.Children.Add(title);
         }
-        monthCapacity = Math.Clamp((int)((monthCells.Bounds.Height / 6 - 45) / 27), 0, 4);
+        monthCapacity = MonthCapacities();
         for (var index = 0; index < 42; index++)
         {
             var day = first.AddDays(index);
             var items = entries.Where(entry => entry.Day == day).ToArray();
             var date = ActionButton(day.Day.ToString(), async () => { selectedDay = day; await ShowMonthDay(day); });
             date.Padding = new Thickness(3, 0);
+            date.MinHeight = date.Height = 20;
             date.Background = day == Beijing.Now.Date ? Brush.Parse("#C4D7F7") : Brushes.Transparent;
             var count = items.Count(item => item.Schedule is not null);
             var countLabel = Label(count > 0 ? count.ToString() : "", 10);
             countLabel.Foreground = Brushes.Crimson;
             var contents = Column(Row(date, countLabel));
             contents.Spacing = 3;
-            foreach (var item in items.Take(monthCapacity)) contents.Children.Add(MonthCard(item, Refresh));
+            contents.Margin = new Thickness(0);
+            var capacity = items.Length <= monthCapacity.Regular ? monthCapacity.Regular : monthCapacity.Overflow;
+            foreach (var item in items.Take(capacity)) contents.Children.Add(MonthCard(item, Refresh));
             if (items.Length > monthCapacity)
                 contents.Children.Add(ActionButton($"＋{items.Length - monthCapacity}", () => ShowMonthDay(day)));
             var cell = new Border
@@ -114,7 +122,7 @@ public sealed partial class WidgetWindow
             row.Children.Add(check);
         }
         var button = ActionButton("", async () => { if (edit is not null) edit(entry); else await EditEntry(entry.Schedule, entry.Todo); });
-        button.Content = title; button.Padding = new Thickness(1, 0);
+        button.Content = title; button.Padding = new Thickness(1, 0); button.Height = button.MinHeight = 23;
         button.HorizontalAlignment = HorizontalAlignment.Stretch;
         Grid.SetColumn(button, 1); row.Children.Add(button);
         row.ContextMenu = ItemMenu(entry.Schedule, entry.Todo, defer);

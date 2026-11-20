@@ -16,8 +16,13 @@ public sealed partial class WidgetWindow
     private readonly Grid monthOverview = new() { Visibility = Visibility.Collapsed, RowSpacing = 7 };
     private readonly Grid monthCells = new() { RowSpacing = 1, ColumnSpacing = 1 };
     private readonly TextBlock overviewHeading = Label("", 18, strong: true);
-    private int monthCapacity;
+    private (int Regular, int Overflow) monthCapacity;
 
+    private (int Regular, int Overflow) MonthCapacities()
+    {
+        var height = Math.Max(0, (monthCells.ActualHeight - 20) / 6);
+        return (Math.Clamp((int)((height - 28) / 26), 0, 4), Math.Clamp((int)((height - 49) / 26), 0, 4));
+    }
     private void BuildMonthOverview()
     {
         monthToggle.Click += (_, _) => ToggleMonth();
@@ -39,7 +44,7 @@ public sealed partial class WidgetWindow
         root.Children.Add(monthOverview);
         monthCells.SizeChanged += (_, _) =>
         {
-            var capacity = Math.Clamp((int)((monthCells.ActualHeight / 6 - 42) / 26), 0, 4);
+            var capacity = MonthCapacities();
             if (monthExpanded && capacity != monthCapacity) RefreshMonthOverview();
         };
     }
@@ -67,7 +72,7 @@ public sealed partial class WidgetWindow
         overviewHeading.Text = month.ToString("yyyy 年 M 月", Chinese);
         var first = month.AddDays(-(((int)month.DayOfWeek + 6) % 7));
         var entries = store.MonthEntries(first, first.AddDays(42));
-        monthCapacity = Math.Clamp((int)((monthCells.ActualHeight / 6 - 42) / 26), 0, 4);
+        monthCapacity = MonthCapacities();
         monthCells.Children.Clear(); monthCells.RowDefinitions.Clear(); monthCells.ColumnDefinitions.Clear();
         for (var col = 0; col < 7; col++)
         {
@@ -91,7 +96,7 @@ public sealed partial class WidgetWindow
             var count = items.Count(entry => entry.Schedule is not null);
             if (count > 0) dateHeader.Children.Add(CalendarCount(count));
             contents.Children.Add(dateHeader);
-            var capacity = monthCapacity;
+            var capacity = items.Length <= monthCapacity.Regular ? monthCapacity.Regular : monthCapacity.Overflow;
             foreach (var item in items.Take(capacity)) contents.Children.Add(MonthCard(item, Refresh));
             if (items.Length > capacity)
             {
