@@ -143,6 +143,7 @@ public sealed partial class WidgetWindow : Window
         reminderTimer.Start();
         ShowIdleSyncStatus();
         Refresh();
+        if (store.Get("month-expanded") == "1") ToggleMonth();
         DispatcherQueue.TryEnqueue(async () =>
         {
             Tick();
@@ -190,6 +191,7 @@ public sealed partial class WidgetWindow : Window
         close.Height = 27;
         close.Padding = new Thickness(0);
         close.Click += (_, _) => ExitWidget();
+        tools.Children.Add(monthToggle);
         tools.Children.Add(pin);
         tools.Children.Add(settings);
         tools.Children.Add(hide);
@@ -279,6 +281,7 @@ public sealed partial class WidgetWindow : Window
         var divider = ConfigureAgendaHeight(header, calendar, footer);
         Grid.SetRow(divider, 3);
         root.Children.Add(divider);
+        BuildMonthOverview();
         return AddResizeEdges();
     }
 
@@ -299,9 +302,11 @@ public sealed partial class WidgetWindow : Window
     {
         var today = Beijing.Now.Date;
         var day = selected ?? today;
+        store.EnsureOccurrences(month.AddDays(-7), month.AddMonths(1).AddDays(7));
         var schedules = store.Schedules().Where(item => !item.Cancelled).ToLookup(item => item.When.Date);
         RefreshCalendar(today, day, schedules);
         RefreshAgenda(day, schedules[day]);
+        RefreshMonthOverview();
     }
 
     private void RefreshCalendar(DateTime today, DateTime selectedDay, ILookup<DateTime, Schedule> schedules)
@@ -388,11 +393,7 @@ public sealed partial class WidgetWindow : Window
             row.Padding = new Thickness(6, 2, 6, 2);
             row.Background = Tile;
             row.CornerRadius = new CornerRadius(6);
-            row.ContextFlyout = DeleteMenu("日程", item.Title, () =>
-            {
-                store.DeleteSchedule(item.Id);
-                ClearDelivered(item.Id);
-            });
+            row.ContextFlyout = ItemMenu(item, null);
             events.Children.Add(row);
         }
         if (events.Children.Count == 0)
@@ -462,7 +463,7 @@ public sealed partial class WidgetWindow : Window
             };
             Grid.SetColumn(priority, 3);
             grid.Children.Add(priority);
-            grid.ContextFlyout = DeleteMenu("待办", item.Title, () => store.DeleteTodo(item.Id));
+            grid.ContextFlyout = ItemMenu(null, item);
             todos.Children.Add(grid);
         }
         if (items.Count == 0)
@@ -489,13 +490,14 @@ public sealed partial class WidgetWindow : Window
     {
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest).WorkArea;
         var scale = Scale;
-        var oldWidth = int.TryParse(store.Get("width"), out var savedWidth);
-        var oldHeight = int.TryParse(store.Get("height"), out var savedHeight);
-        var width = Math.Min(area.Width, (int)(Math.Max(MinimumWidth, oldWidth ? savedWidth : 338) * scale));
-        var height = Math.Min(area.Height, oldHeight
-            ? (int)(Math.Max(MinimumHeight, savedHeight) * scale) : Math.Min((int)(500 * scale), (int)(area.Height * 0.73)));
-        var x = Math.Clamp(AppWindow.Position.X, area.X, area.X + area.Width - width);
-        var y = Math.Clamp(AppWindow.Position.Y, area.Y, area.Y + area.Height - height);
+        var prefix = monthExpanded ? "month-" : "";
+        var oldWidth = int.TryParse(store.Get(prefix + "width"), out var savedWidth);
+        var oldHeight = int.TryParse(store.Get(prefix + "height"), out var savedHeight);
+        var width = Math.Min(area.Width, (int)(Math.Max(MinimumWidth, oldWidth ? savedWidth : monthExpanded ? 1000 : 338) * scale));
+        var height = Math.Min(area.Height, Math.Max((int)(MinimumHeight * scale), oldHeight
+            ? (int)(Math.Max(MinimumHeight, savedHeight) * scale) : Math.Min((int)((monthExpanded ? 720 : 500) * scale), (int)(area.Height * 0.73))));
+        var x = Math.Clamp(int.TryParse(store.Get(prefix + "x"), out var savedX) ? savedX : AppWindow.Position.X, area.X, area.X + area.Width - width);
+        var y = Math.Clamp(int.TryParse(store.Get(prefix + "y"), out var savedY) ? savedY : AppWindow.Position.Y, area.Y, area.Y + area.Height - height);
         AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
         RoundWindow();
     }
@@ -511,10 +513,11 @@ public sealed partial class WidgetWindow : Window
 
     private void SavePosition()
     {
-        store.Set("x", AppWindow.Position.X.ToString(CultureInfo.InvariantCulture));
-        store.Set("y", AppWindow.Position.Y.ToString(CultureInfo.InvariantCulture));
-        store.Set("width", ((int)Math.Round(AppWindow.Size.Width / Scale)).ToString(CultureInfo.InvariantCulture));
-        store.Set("height", ((int)Math.Round(AppWindow.Size.Height / Scale)).ToString(CultureInfo.InvariantCulture));
+        var prefix = monthExpanded ? "month-" : "";
+        store.Set(prefix + "x", AppWindow.Position.X.ToString(CultureInfo.InvariantCulture));
+        store.Set(prefix + "y", AppWindow.Position.Y.ToString(CultureInfo.InvariantCulture));
+        store.Set(prefix + "width", ((int)Math.Round(AppWindow.Size.Width / Scale)).ToString(CultureInfo.InvariantCulture));
+        store.Set(prefix + "height", ((int)Math.Round(AppWindow.Size.Height / Scale)).ToString(CultureInfo.InvariantCulture));
     }
 
     public void ShowWidget()

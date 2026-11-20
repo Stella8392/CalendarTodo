@@ -37,6 +37,12 @@ public sealed class MacApplication : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var custom = Environment.GetEnvironmentVariable("CALENDARTODO_DATA_DIR");
+            if ((desktop.Args?.Contains("--smoke-test") == true || desktop.Args?.Contains("--ui-test") == true) && string.IsNullOrWhiteSpace(custom))
+            {
+                Console.Error.WriteLine("Verification requires an isolated CALENDARTODO_DATA_DIR.");
+                desktop.Shutdown(2);
+                return;
+            }
             var folder = string.IsNullOrWhiteSpace(custom)
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "CalendarTodo")
                 : Path.GetFullPath(custom);

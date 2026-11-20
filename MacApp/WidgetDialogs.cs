@@ -25,14 +25,16 @@ public sealed partial class WidgetWindow
         return await window.ShowDialog<bool>(owner ?? this);
     }
 
-    private async Task AddSchedule()
+    private Task AddSchedule() => AddScheduleForDate(selectedDay);
+
+    private async Task AddScheduleForDate(DateTime chosenDay)
     {
         if (dialogOpen) return;
         dialogOpen = true;
         try
         {
             var title = new TextBox { Watermark = "日程名称", MaxLength = 180 };
-            var date = new DatePicker { SelectedDate = Beijing.Now, HorizontalAlignment = HorizontalAlignment.Stretch };
+            var date = new DatePicker { SelectedDate = new DateTimeOffset(chosenDay.AddHours(12)), HorizontalAlignment = HorizontalAlignment.Stretch };
             var time = new TimePicker { SelectedTime = Beijing.Now.TimeOfDay, ClockIdentifier = "24HourClock", MinuteIncrement = 1 };
             var status = Label("", 12);
             var window = Dialog("添加日程", title);
@@ -160,17 +162,23 @@ public sealed partial class WidgetWindow
             var candidates = store.ReviewTargets(pending.Id);
             var target = new ComboBox { PlaceholderText = "选择原日程", ItemsSource = candidates.Select(item => $"{item.When:M/d HH:mm} · {item.Title}").ToArray() };
             target.IsVisible = suggestion.Action != MailAction.Add;
+            var scope = ScopePicker(false);
+            target.SelectionChanged += (_, _) => scope.IsVisible = target.SelectedIndex >= 0 && store.RuleFor(candidates[target.SelectedIndex].Id, true) is not null;
             date.IsVisible = time.IsVisible = suggestion.Action != MailAction.Cancel;
             var status = Label("", 12);
             var window = Dialog("确认邮件日程", details);
-            window.Content = new ScrollViewer { Margin = new Avalonia.Thickness(16), Content = Column(details, date, time, target, status, Horizontal(
+            window.Content = new ScrollViewer { Margin = new Avalonia.Thickness(16), Content = Column(details, date, time, target, scope, status, Horizontal(
                 ActionButton("保存", () =>
                 {
                     if (suggestion.Action != MailAction.Add && target.SelectedIndex < 0) { status.Text = "请选择原日程"; return; }
                     if (suggestion.Action != MailAction.Cancel && (date.SelectedDate is null || time.SelectedTime is null)) { status.Text = "请选择日期和时间"; return; }
                     DateTimeOffset? when = suggestion.Action == MailAction.Cancel ? null : Beijing.At(date.SelectedDate!.Value.Date + time.SelectedTime!.Value);
-                    if (store.Resolve(pending.Id, when, target.SelectedIndex < 0 ? null : candidates[target.SelectedIndex].Id, false)) window.Close();
-                    else status.Text = "无法更新该日程，请重新确认";
+                    try
+                    {
+                        if (store.Resolve(pending.Id, when, target.SelectedIndex < 0 ? null : candidates[target.SelectedIndex].Id, false, (EditScope)scope.SelectedIndex)) window.Close();
+                        else status.Text = "无法更新该日程，请重新确认";
+                    }
+                    catch (Microsoft.Data.Sqlite.SqliteException) { status.Text = "目标日期已有已编辑或完成的记录，请调整范围后重试。"; }
                 }), ActionButton("忽略", () => { store.Resolve(pending.Id, null, null, true); window.Close(); }))) };
             await window.ShowDialog(this);
             Refresh();
@@ -219,7 +227,7 @@ public sealed partial class WidgetWindow
         try
         {
             if (await Confirm("产品反馈", "反馈将提交到公开的 GitHub Issues。请检查内容，避免填写邮箱、授权码和私人日程。"))
-                MacSystem.Open("https://github.com/Stella8392/CalendarTodo/issues/new?body=" + Uri.EscapeDataString("Mac 预览版 1.4.0-preview.1\n\n反馈内容：\n\n复现步骤：\n"));
+                MacSystem.Open("https://github.com/Stella8392/CalendarTodo/issues/new?body=" + Uri.EscapeDataString("Mac 预览版 1.5.0-preview.1\n\n反馈内容：\n\n复现步骤：\n"));
         }
         finally { dialogOpen = false; }
     }

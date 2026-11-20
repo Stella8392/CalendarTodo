@@ -2,6 +2,7 @@ using CalendarTodo;
 using MimeKit;
 
 var now = Beijing.At(new DateTime(2026, 11, 16, 10, 0, 0));
+RecurrenceVerification.Run();
 
 List<Suggestion> Parse(string title, string body)
 {

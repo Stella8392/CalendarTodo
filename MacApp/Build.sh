@@ -36,6 +36,6 @@ iconutil -c icns "$iconset" -o "$app/Contents/Resources/CalendarTodo.icns"
 chmod +x "$app/Contents/MacOS/CalendarTodo.Mac"
 codesign --force --deep --sign - --entitlements "$project/MacApp/entitlements.plist" "$app"
 codesign --verify --deep --strict "$app"
-ditto -c -k --sequesterRsrc --keepParent "$app" "$output/CalendarTodo-macOS-$rid-1.4.0-preview.1.zip"
+ditto -c -k --sequesterRsrc --keepParent "$app" "$output/CalendarTodo-macOS-$rid-1.5.0-preview.1.zip"
 cd "$output"
-shasum -a 256 "CalendarTodo-macOS-$rid-1.4.0-preview.1.zip" > SHA256SUMS.txt
+shasum -a 256 "CalendarTodo-macOS-$rid-1.5.0-preview.1.zip" > SHA256SUMS.txt

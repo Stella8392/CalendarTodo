@@ -15,8 +15,8 @@ namespace CalendarTodo;
 
 public sealed partial class WidgetWindow
 {
-    private const int MinimumWidth = 315;
-    private const int MinimumHeight = 420;
+    private int MinimumWidth => monthExpanded ? 760 : 315;
+    private int MinimumHeight => monthExpanded ? 480 : 420;
     private const double DividerHeight = 12;
     private const double MinimumAgendaHeight = 54;
     private const double ReservedTodoHeight = 48;
@@ -156,6 +156,7 @@ public sealed partial class WidgetWindow
 
         void ApplyHeight()
         {
+            if (monthExpanded) { agendaRow.Height = new GridLength(0); return; }
             if (root.ActualHeight <= 0)
                 return;
             maximumAgendaHeight = Math.Max(0, root.ActualHeight - root.Padding.Top - root.Padding.Bottom -

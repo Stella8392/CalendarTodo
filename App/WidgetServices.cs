@@ -368,6 +368,10 @@ public sealed partial class WidgetWindow
                 };
                 if (item.Action != MailAction.Add)
                     content.Children.Add(target);
+                var scope = ScopePicker(false);
+                target.SelectionChanged += (_, _) => scope.Visibility = target.SelectedIndex >= 0 && store.RuleFor(candidates[target.SelectedIndex].Id, true) is not null
+                    ? Visibility.Visible : Visibility.Collapsed;
+                content.Children.Add(scope);
                 var status = Label("", 11, Accent);
                 content.Children.Add(status);
                 var dialog = Dialog("确认邮件日程", content, item.Action == MailAction.Cancel ? "确认取消" : "确认保存");
@@ -393,13 +397,14 @@ public sealed partial class WidgetWindow
                         return;
                     }
                     var id = target.SelectedIndex < 0 ? (long?)null : candidates[target.SelectedIndex].Id;
-                    if (!store.Resolve(pending.Id, when, id, ignore: false))
+                    try
                     {
-                        args.Cancel = true;
-                        status.Text = "该日程当前无法更新。";
+                        if (!store.Resolve(pending.Id, when, id, ignore: false, scope: (EditScope)scope.SelectedIndex))
+                        { args.Cancel = true; status.Text = "该日程当前无法更新。"; }
+                        else if (id.HasValue) ClearDelivered(id.Value);
                     }
-                    else if (id.HasValue)
-                        ClearDelivered(id.Value);
+                    catch (Microsoft.Data.Sqlite.SqliteException)
+                    { args.Cancel = true; status.Text = "目标日期已有已编辑或完成的记录，请调整范围后重试。"; }
                 };
                 dialog.SecondaryButtonClick += (_, _) => store.Resolve(pending.Id, null, null, ignore: true);
                 if (await dialog.ShowAsync() == ContentDialogResult.None)
@@ -453,6 +458,7 @@ public sealed partial class WidgetWindow
         if (exiting)
             return;
         var now = Beijing.Now;
+        store.EnsureOccurrences(now.Date.AddDays(-1), now.Date.AddDays(3), now);
         if (lastDay != now.Date)
         {
             if (selected is null)

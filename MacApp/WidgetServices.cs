@@ -79,6 +79,7 @@ public sealed partial class WidgetWindow
     private async Task Tick()
     {
         if (closing) return;
+        store.EnsureOccurrences(Beijing.Now.Date.AddDays(-1), Beijing.Now.Date.AddDays(3));
         if (lastToday != Beijing.Now.Date)
         {
             if (selectedDay == lastToday) selectedDay = Beijing.Now.Date;

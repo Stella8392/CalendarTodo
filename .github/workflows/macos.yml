@@ -2,7 +2,7 @@ name: macOS preview
 on:
   workflow_dispatch:
   push:
-    branches: [macos-preview]
+    branches: [macos-preview, feature/monthly-recurrence, main]
     paths: ['MacApp/**', 'Core/**', 'Verification/**', 'ThirdParty/**', 'THIRD-PARTY-NOTICES.md', '.github/workflows/macos.yml']
 permissions:
   contents: read
@@ -64,7 +64,11 @@ jobs:
           for folder in artifacts/*; do
             (cd "$folder" && sha256sum -c SHA256SUMS.txt)
           done
+          if [ "$(gh release view v1.5.0-preview.1 --json isDraft --jq .isDraft)" != "true" ]; then
+            echo "Preview already published; keeping this run as build artifacts."
+            exit 0
+          fi
           cat artifacts/*/SHA256SUMS.txt > SHA256SUMS.txt
           sha256sum artifacts/*/*.zip
-          gh release edit v1.4.0-preview.1 --target "$GITHUB_SHA"
-          gh release upload v1.4.0-preview.1 artifacts/*/*.zip SHA256SUMS.txt --clobber
+          gh release edit v1.5.0-preview.1 --target "$GITHUB_SHA"
+          gh release upload v1.5.0-preview.1 artifacts/*/*.zip SHA256SUMS.txt --clobber

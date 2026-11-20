@@ -43,7 +43,7 @@ public sealed partial class WidgetWindow : Window
         TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur];
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://CalendarTodo.Mac/Assets/CalendarTodo.ico")));
         Content = Build();
-        Opened += (_, _) => RestorePosition();
+        Opened += (_, _) => { RestorePosition(); if (store.Get("mac-month-expanded") == "1") ToggleMonth(); };
         Closing += async (_, args) =>
         {
             if (closing) return;
@@ -72,7 +72,7 @@ public sealed partial class WidgetWindow : Window
         var title = Label("日历与待办", 18);
         title.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
         var pin = ActionButton("置顶", () => { Topmost = !Topmost; store.Set("mac-topmost", Topmost ? "1" : "0"); });
-        var header = Row(title, Horizontal(pin, ActionButton("设置", Settings), ActionButton("隐藏", () => { SaveLayout(); Hide(); })));
+        var header = Row(title, Horizontal(monthToggle, pin, ActionButton("设置", Settings), ActionButton("隐藏", () => { SaveLayout(); Hide(); })));
         Add(layout, header, 0);
         var monthControls = Row(monthLabel, Horizontal(
             ActionButton("‹", () => { month = month.AddMonths(-1); Refresh(); }),
@@ -102,11 +102,13 @@ public sealed partial class WidgetWindow : Window
         syncStatus.FontSize = 11;
         syncButton.Click += async (_, _) => await Sync(manual: true);
         Add(layout, Row(syncStatus, Horizontal(syncButton, ActionButton("反馈", Feedback))), 6);
+        BuildMonthOverview();
         return layout;
     }
 
     private void Refresh()
     {
+        store.EnsureOccurrences(month.AddDays(-7), month.AddMonths(1).AddDays(7));
         var schedules = store.Schedules().Where(item => !item.Cancelled).ToArray();
         monthLabel.Text = month.ToString("yyyy 年 M 月", CultureInfo.InvariantCulture);
         calendar.Children.Clear();
@@ -156,11 +158,12 @@ public sealed partial class WidgetWindow : Window
             title.TextTrimming = TextTrimming.CharacterEllipsis;
             ToolTip.SetTip(title, $"{item.Title}\n{item.Account}");
             var row = Row(title, Label($"{item.When:HH:mm} {(item.Kind == EventKind.Deadline ? "截止" : "开始")}", 11));
-            row.ContextMenu = DeleteMenu("日程", item.Title, () => store.DeleteSchedule(item.Id));
+            row.ContextMenu = ItemMenu(item, null);
             agenda.Children.Add(Tile(row));
         }
         if (agenda.Children.Count == 0) agenda.Children.Add(Label("当天暂无日程", 12));
         var tasks = store.Todos(Beijing.Now);
+        RefreshMonthOverview();
         todoLabel.Text = $"今日待办 · 未完成 {tasks.Count(item => !item.Done && !item.Cancelled)}";
         todos.Children.Clear();
         foreach (var item in tasks)
@@ -179,7 +182,7 @@ public sealed partial class WidgetWindow : Window
             row.Children.Add(title);
             Grid.SetColumn(priority, 2);
             row.Children.Add(priority);
-            row.ContextMenu = DeleteMenu("待办", item.Title, () => store.DeleteTodo(item.Id));
+            row.ContextMenu = ItemMenu(null, item);
             var tile = Tile(row);
             tile.BorderBrush = item.Done ? Brushes.DimGray : new[] { Brushes.ForestGreen, Brushes.Goldenrod, Brushes.Crimson }[(int)item.Priority];
             tile.BorderThickness = new Thickness(4, 0, 0, 0);
@@ -187,35 +190,29 @@ public sealed partial class WidgetWindow : Window
         }
     }
 
-    private ContextMenu DeleteMenu(string kind, string title, Action delete)
-    {
-        var item = new MenuItem { Header = $"删除{kind}" };
-        item.Click += async (_, _) => { if (await Confirm($"删除{kind}", $"删除「{title}」？")) { delete(); Refresh(); } };
-        return new ContextMenu { ItemsSource = new[] { item } };
-    }
-
     private double Number(string key, double fallback) => double.TryParse(store.Get(key), CultureInfo.InvariantCulture, out var value) && double.IsFinite(value) && value > 0 ? value : fallback;
     private void SaveLayout()
     {
-        store.Set("mac-width", Width.ToString(CultureInfo.InvariantCulture));
-        store.Set("mac-height", Height.ToString(CultureInfo.InvariantCulture));
-        store.Set("mac-x", Position.X.ToString(CultureInfo.InvariantCulture));
-        store.Set("mac-y", Position.Y.ToString(CultureInfo.InvariantCulture));
-        store.Set("mac-agenda-weight", layout.RowDefinitions[2].Height.Value.ToString(CultureInfo.InvariantCulture));
+        var prefix = monthExpanded ? "mac-month-" : "mac-";
+        store.Set(prefix + "width", Width.ToString(CultureInfo.InvariantCulture));
+        store.Set(prefix + "height", Height.ToString(CultureInfo.InvariantCulture));
+        store.Set(prefix + "x", Position.X.ToString(CultureInfo.InvariantCulture));
+        store.Set(prefix + "y", Position.Y.ToString(CultureInfo.InvariantCulture));
+        if (!monthExpanded) store.Set("mac-agenda-weight", layout.RowDefinitions[2].Height.Value.ToString(CultureInfo.InvariantCulture));
     }
     private void RestorePosition()
     {
-        if (Screens.Primary is { } primary)
-        {
-            Width = Math.Clamp(Width, MinWidth, Math.Max(MinWidth, primary.WorkingArea.Width / primary.Scaling - 40));
-            Height = Math.Clamp(Height, MinHeight, Math.Max(MinHeight, primary.WorkingArea.Height / primary.Scaling - 40));
-        }
-        if (int.TryParse(store.Get("mac-x"), out var x) && int.TryParse(store.Get("mac-y"), out var y) &&
-            Screens.All.Any(screen => screen.WorkingArea.Contains(new PixelPoint(x + 30, y + 30))))
-            Position = new PixelPoint(x, y);
-        else if (Screens.Primary is { } screen) Position = new PixelPoint(screen.WorkingArea.X + 30, screen.WorkingArea.Y + 30);
+        if (Screens.Primary is not { } primary) return;
+        var prefix = monthExpanded ? "mac-month-" : "mac-";
+        var x = int.TryParse(store.Get(prefix + "x"), out var savedX) ? savedX : primary.WorkingArea.X + 30;
+        var y = int.TryParse(store.Get(prefix + "y"), out var savedY) ? savedY : primary.WorkingArea.Y + 30;
+        var screen = Screens.All.FirstOrDefault(item => item.WorkingArea.Contains(new PixelPoint(x + 30, y + 30))) ?? primary;
+        Width = Math.Clamp(Width, MinWidth, Math.Max(MinWidth, screen.WorkingArea.Width / screen.Scaling - 40));
+        Height = Math.Clamp(Height, MinHeight, Math.Max(MinHeight, screen.WorkingArea.Height / screen.Scaling - 40));
+        var right = Math.Max(screen.WorkingArea.X, screen.WorkingArea.Right - (int)Math.Ceiling(Width * screen.Scaling));
+        var bottom = Math.Max(screen.WorkingArea.Y, screen.WorkingArea.Bottom - (int)Math.Ceiling(Height * screen.Scaling));
+        Position = new PixelPoint(Math.Clamp(x, screen.WorkingArea.X, right), Math.Clamp(y, screen.WorkingArea.Y, bottom));
     }
-
     private static TextBlock Label(string text, double size = 14) => new() { Text = text, FontSize = size, VerticalAlignment = VerticalAlignment.Center };
     private static Button ActionButton(string title, Action action)
     {
